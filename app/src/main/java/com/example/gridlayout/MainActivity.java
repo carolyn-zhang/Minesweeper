@@ -7,7 +7,6 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 
@@ -17,7 +16,10 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int COLUMN_COUNT = 8;
     private int clock = 0;
+    private int numFlagsLeft = 10;
     private boolean running = false;
+    private boolean flag = false;
+    private boolean pick = true;
 
     // save the TextViews of all cells in an array, so later on,
     // when a TextView is clicked, we know which cell it is
@@ -35,33 +37,6 @@ public class MainActivity extends AppCompatActivity {
 
         cell_tvs = new ArrayList<TextView>();
         runTimer();
-
-        // Method (1): add statically created cells
-//        TextView tv00 = (TextView) findViewById(R.id.textView00);
-//        TextView tv01 = (TextView) findViewById(R.id.textView01);
-//        TextView tv10 = (TextView) findViewById(R.id.textView10);
-//        TextView tv11 = (TextView) findViewById(R.id.textView11);
-//
-//        tv00.setTextColor(Color.GRAY);
-//        tv00.setBackgroundColor(Color.GRAY);
-//        tv00.setOnClickListener(this::onClickTV);
-//
-//        tv01.setTextColor(Color.GRAY);
-//        tv01.setBackgroundColor(Color.GRAY);
-//        tv01.setOnClickListener(this::onClickTV);
-//
-//        tv10.setTextColor(Color.GRAY);
-//        tv10.setBackgroundColor(Color.GRAY);
-//        tv10.setOnClickListener(this::onClickTV);
-//
-//        tv11.setTextColor(Color.GRAY);
-//        tv11.setBackgroundColor(Color.GRAY);
-//        tv11.setOnClickListener(this::onClickTV);
-//
-//        cell_tvs.add(tv00);
-//        cell_tvs.add(tv01);
-//        cell_tvs.add(tv10);
-//        cell_tvs.add(tv11);
 
         // Method (2): add four dynamically created cells
         GridLayout grid = (GridLayout) findViewById(R.id.gridLayout01);
@@ -86,26 +61,15 @@ public class MainActivity extends AppCompatActivity {
                 cell_tvs.add(tv);
             }
         }
+        final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
+        flagsLeft.setText(String.valueOf(numFlagsLeft));
 
-        // Method (3): add four dynamically created cells with LayoutInflater
-//        LayoutInflater li = LayoutInflater.from(this);
-//        for (int i = 0; i<=5; i++) {
-//            for (int j=0; j<=4; j++) {
-//                TextView tv = (TextView) li.inflate(R.layout.custom_cell_layout, grid, false);
-//                //tv.setText(String.valueOf(i)+String.valueOf(j));
-//                tv.setTextColor(Color.GRAY);
-//                tv.setBackgroundColor(Color.GRAY);
-//                tv.setOnClickListener(this::onClickTV);
-//
-//                GridLayout.LayoutParams lp = (GridLayout.LayoutParams) tv.getLayoutParams();
-//                lp.rowSpec = GridLayout.spec(i);
-//                lp.columnSpec = GridLayout.spec(j);
-//
-//                grid.addView(tv, lp);
-//
-//                cell_tvs.add(tv);
-//            }
-//        }
+        TextView pick = (TextView) findViewById(R.id.pick);
+        pick.setOnClickListener(this::onClickPick);
+
+        TextView flag = (TextView) findViewById(R.id.flag);
+        flag.setOnClickListener(this::onClickFlag);
+        flag.setVisibility(TextView.INVISIBLE);
 
     }
 
@@ -117,18 +81,49 @@ public class MainActivity extends AppCompatActivity {
         return -1;
     }
 
+    // user wants to toggle to setting flags now
+    public void onClickPick(View view){
+        pick = false;
+        flag = true;
+
+        TextView pick = (TextView) findViewById(R.id.pick);
+        pick.setVisibility(TextView.INVISIBLE);
+
+        TextView flag = (TextView) findViewById(R.id.flag);
+        flag.setVisibility(TextView.VISIBLE);
+    }
+
+    // user wants to toggle to picking now
+    public void onClickFlag(View view){
+        flag = false;
+        pick = true;
+
+        TextView flag = (TextView) findViewById(R.id.flag);
+        flag.setVisibility(TextView.INVISIBLE);
+
+        TextView pick = (TextView) findViewById(R.id.pick);
+        pick.setVisibility(TextView.VISIBLE);
+    }
+
     public void onClickTV(View view){
         running = true;
         TextView tv = (TextView) view;
         int n = findIndexOfCellTextView(tv);
         int i = n/COLUMN_COUNT;
         int j = n%COLUMN_COUNT;
-        tv.setText(String.valueOf(i)+String.valueOf(j)); // cell value
-        if (tv.getCurrentTextColor() == Color.GREEN) {
-            tv.setTextColor(Color.GRAY);
-            tv.setBackgroundColor(Color.LTGRAY);
-//            tv.setTextColor(Color.GREEN);
-//            tv.setBackgroundColor(Color.parseColor("lime"));
+        if(pick && tv.getText() == "") {
+            // only pick cell if not already flagged
+            tv.setText(String.valueOf(i)+String.valueOf(j)); // cell value
+            if (tv.getCurrentTextColor() == Color.GREEN) {
+                tv.setTextColor(Color.GRAY);
+                tv.setBackgroundColor(Color.LTGRAY);
+            }
+        } else if (flag && tv.getText() == "" && numFlagsLeft > 0) {
+            // only flag cell if not already picked
+            tv.setText(R.string.flag);
+            final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
+            numFlagsLeft -= 1;
+            flagsLeft.setText(String.valueOf(numFlagsLeft));
         }
     }
 
