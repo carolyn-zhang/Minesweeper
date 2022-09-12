@@ -4,11 +4,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.gridlayout.widget.GridLayout;
 
 import android.content.res.Resources;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 import android.widget.TextView;
+
 
 import java.util.ArrayList;
 
@@ -20,6 +22,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean running = false;
     private boolean flag = false;
     private boolean pick = true;
+    private boolean won = false;
 
     // save the TextViews of all cells in an array, so later on,
     // when a TextView is clicked, we know which cell it is
@@ -157,7 +160,13 @@ public class MainActivity extends AppCompatActivity {
             // only pick cell if not already flagged
             if(mineLocations.contains(n)){ // the cell picked has a mine
                 hidePickAndFlag(); // game over so don't let user pick/flag
-                revealMines();
+                running = false; // stop timer
+
+                // reveal mine that was picked, followed by the other mines
+                revealMines(n);
+
+                // show the results page
+                showResultsPage();
             } else { // the cell picked doesn't have a mine
                 if (tv.getCurrentTextColor() == Color.GREEN) {
                     tv.setBackgroundColor(Color.LTGRAY);
@@ -177,13 +186,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void revealMines() {
-        for(int i = 0; i < cell_tvs.size(); i++) {
-            if(mineLocations.contains(i)) { // cell_tvs[i] is a mine
-                cell_tvs.get(i).setBackgroundColor(Color.LTGRAY);
-                cell_tvs.get(i).setText(R.string.mine);
+    private void revealMines(int n) {
+        final Handler handler = new Handler();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if(!mineLocations.isEmpty()) {
+                    if(mineLocations.contains(Integer.valueOf(n))){
+                        cell_tvs.get(n).setBackgroundColor(Color.LTGRAY);
+                        cell_tvs.get(n).setText(R.string.mine);
+                        mineLocations.remove(Integer.valueOf(n));
+                    } else {
+                        cell_tvs.get(mineLocations.get(0)).setBackgroundColor(Color.LTGRAY);
+                        cell_tvs.get(mineLocations.get(0)).setText(R.string.mine);
+                        mineLocations.remove(0);
+                    }
+                } else {
+                    handler.removeCallbacksAndMessages(null);
+                }
+                handler.postDelayed(this, 1000);
             }
-        }
+        });
     }
 
     private void runTimer() {
@@ -203,5 +226,18 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, 1000);
             }
         });
+    }
+
+    private void showResultsPage() {
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(getApplicationContext(), ResultsPage.class);
+                i.putExtra("clock", clock);
+                i.putExtra("won", won);
+                startActivity(i);
+            }
+        }, 5000);
     }
 }
