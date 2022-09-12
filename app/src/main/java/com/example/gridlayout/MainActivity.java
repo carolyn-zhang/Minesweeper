@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
         cell_tvs = new ArrayList<TextView>();
         runTimer();
+        mineLocations = new ArrayList<Integer>();
         mineLocations = generateMineLocations();
 
         // Method (2): add four dynamically created cells
@@ -88,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         for(int i = 0; i < mineLocations.size(); i++){
-            System.out.println(mineLocations.get(i));
+            System.out.println(mineLocations.get(i) + " row: " + mineLocations.get(i)/COLUMN_COUNT +
+                    " col: " + mineLocations.get(i)%COLUMN_COUNT);
         }
         return mineLocations;
     }
@@ -101,18 +103,57 @@ public class MainActivity extends AppCompatActivity {
         return -1;
     }
 
+    private int getNumNeighboringMines(int n) {
+        int i = n/COLUMN_COUNT;
+        int j = n%COLUMN_COUNT;
+
+        int numMines = 0;
+        if(j - 1 >= 0) { // left
+            if(mineLocations.contains(n - 1))
+                numMines += 1;
+        }
+        if(i - 1 >= 0 && j - 1 >= 0) { // topLeft
+            if(mineLocations.contains(n - 8 - 1))
+                numMines += 1;
+        }
+        if(i - 1 >= 0) { // top
+            if(mineLocations.contains(n - 8))
+                numMines += 1;
+        }
+        if(i - 1 >= 0 && j + 1 <= 7) { // topRight
+            if(mineLocations.contains(n - 8 + 1))
+                numMines += 1;
+        }
+        if(j + 1 >= 0) { // right
+            if(mineLocations.contains(n+1))
+                numMines += 1;
+        }
+        if(i + 1 <= 9 && j + 1 <= 7) { // bottomRight
+            if(mineLocations.contains(n + 8 + 1))
+                numMines += 1;
+        }
+        if(i + 1 <= 9) { // bottom
+            if(mineLocations.contains(n + 8))
+                numMines += 1;
+        }
+        if(i + 1 <= 9 && j - 1 >= 0) { // leftBottom
+            if(mineLocations.contains(n + 8 - 1))
+                numMines += 1;
+        }
+
+        return numMines;
+    }
+
     // user wants to toggle to setting flags now
     public void onClickPick(View view){
-        if(numFlagsLeft > 0) {
-            pick = false;
-            flag = true;
+        pick = false;
+        flag = true;
 
-            TextView pick = (TextView) findViewById(R.id.pick);
-            pick.setVisibility(TextView.INVISIBLE);
+        TextView pick = (TextView) findViewById(R.id.pick);
+        pick.setVisibility(TextView.INVISIBLE);
 
-            TextView flag = (TextView) findViewById(R.id.flag);
-            flag.setVisibility(TextView.VISIBLE);
-        }
+        TextView flag = (TextView) findViewById(R.id.flag);
+        flag.setVisibility(TextView.VISIBLE);
     }
 
     // user wants to toggle to picking now
@@ -128,16 +169,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // toggle to picking, call if no more flags left
-    public void toggleToPicking() {
-        flag = false;
-        pick = true;
-
-        TextView flag = (TextView) findViewById(R.id.flag);
-        flag.setVisibility(TextView.INVISIBLE);
-
-        TextView pick = (TextView) findViewById(R.id.pick);
-        pick.setVisibility(TextView.VISIBLE);
-    }
+//    public void toggleToPicking() {
+//        flag = false;
+//        pick = true;
+//
+//        TextView flag = (TextView) findViewById(R.id.flag);
+//        flag.setVisibility(TextView.INVISIBLE);
+//
+//        TextView pick = (TextView) findViewById(R.id.pick);
+//        pick.setVisibility(TextView.VISIBLE);
+//    }
 
     public void hidePickAndFlag() {
         flag = false;
@@ -154,8 +195,6 @@ public class MainActivity extends AppCompatActivity {
         running = true;
         TextView tv = (TextView) view;
         int n = findIndexOfCellTextView(tv);
-        int i = n/COLUMN_COUNT;
-        int j = n%COLUMN_COUNT;
         if(pick && tv.getText() == "") {
             // only pick cell if not already flagged
             if(mineLocations.contains(n)){ // the cell picked has a mine
@@ -168,11 +207,9 @@ public class MainActivity extends AppCompatActivity {
                 // show the results page
                 showResultsPage();
             } else { // the cell picked doesn't have a mine
-                if (tv.getCurrentTextColor() == Color.GREEN) {
-                    tv.setBackgroundColor(Color.LTGRAY);
-                    tv.setTextColor(Color.GRAY);
-                    tv.setText(String.valueOf(i)+String.valueOf(j)); // cell value
-                }
+                tv.setBackgroundColor(Color.LTGRAY);
+                tv.setTextColor(Color.GRAY);
+                tv.setText(String.valueOf(getNumNeighboringMines(n))); // cell value
             }
         } else if (flag && tv.getText() == "") {
             // only flag cell if not already picked
@@ -180,9 +217,15 @@ public class MainActivity extends AppCompatActivity {
             final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
             numFlagsLeft -= 1;
             flagsLeft.setText(String.valueOf(numFlagsLeft));
-            if(numFlagsLeft == 0) { // no more flags left, go to pick
-                toggleToPicking();
-            }
+//            if(numFlagsLeft == 0) { // no more flags left, go to pick
+//                toggleToPicking();
+//            }
+        } else if(flag && tv.getText().toString().equals(getString(R.string.flag))) {
+            // unflag cell if already flagged
+            tv.setText("");
+            final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
+            numFlagsLeft += 1;
+            flagsLeft.setText(String.valueOf(numFlagsLeft));
         }
     }
 
