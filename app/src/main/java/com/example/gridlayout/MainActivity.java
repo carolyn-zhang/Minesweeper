@@ -19,10 +19,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int COLUMN_COUNT = 8;
     private int clock = 0;
     private int numFlagsLeft = 4; // 4 b/c we have 4 mines
+    private int numNonMinesRevealed = 0;
     private boolean running = false;
     private boolean flag = false;
     private boolean pick = true;
     private boolean won = false;
+    private boolean gameOver = false;
 
     // save the TextViews of all cells in an array, so later on,
     // when a TextView is clicked, we know which cell it is
@@ -41,10 +43,9 @@ public class MainActivity extends AppCompatActivity {
 
         cell_tvs = new ArrayList<TextView>();
         runTimer();
-        mineLocations = new ArrayList<Integer>();
         mineLocations = generateMineLocations();
 
-        // Method (2): add four dynamically created cells
+        // dynamically add cells
         GridLayout grid = (GridLayout) findViewById(R.id.gridLayout01);
         for (int i = 0; i<=9; i++) {
             for (int j=0; j<=7; j++) {
@@ -106,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
     private int getNumNeighboringMines(int n) {
         int i = n/COLUMN_COUNT;
         int j = n%COLUMN_COUNT;
-
         int numMines = 0;
         if(j - 1 >= 0) { // left
             if(mineLocations.contains(n - 1))
@@ -124,8 +124,8 @@ public class MainActivity extends AppCompatActivity {
             if(mineLocations.contains(n - 8 + 1))
                 numMines += 1;
         }
-        if(j + 1 >= 0) { // right
-            if(mineLocations.contains(n+1))
+        if(j + 1 <= 7) { // right
+            if(mineLocations.contains(n + 1))
                 numMines += 1;
         }
         if(i + 1 <= 9 && j + 1 <= 7) { // bottomRight
@@ -140,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
             if(mineLocations.contains(n + 8 - 1))
                 numMines += 1;
         }
-
         return numMines;
     }
 
@@ -168,18 +167,6 @@ public class MainActivity extends AppCompatActivity {
         pick.setVisibility(TextView.VISIBLE);
     }
 
-    // toggle to picking, call if no more flags left
-//    public void toggleToPicking() {
-//        flag = false;
-//        pick = true;
-//
-//        TextView flag = (TextView) findViewById(R.id.flag);
-//        flag.setVisibility(TextView.INVISIBLE);
-//
-//        TextView pick = (TextView) findViewById(R.id.pick);
-//        pick.setVisibility(TextView.VISIBLE);
-//    }
-
     public void hidePickAndFlag() {
         flag = false;
         pick = false;
@@ -192,24 +179,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClickTV(View view){
-        running = true;
+        if(!running && !gameOver)
+            running = true; // start timer
+        if(gameOver){
+            showResultsPage();
+        }
+
         TextView tv = (TextView) view;
         int n = findIndexOfCellTextView(tv);
         if(pick && tv.getText() == "") {
             // only pick cell if not already flagged
-            if(mineLocations.contains(n)){ // the cell picked has a mine
+            if(mineLocations.contains(n)){
+                // the cell picked has a mine, game has been lost
                 hidePickAndFlag(); // game over so don't let user pick/flag
                 running = false; // stop timer
-
                 // reveal mine that was picked, followed by the other mines
                 revealMines(n);
-
-                // show the results page
-                showResultsPage();
             } else { // the cell picked doesn't have a mine
-                tv.setBackgroundColor(Color.LTGRAY);
-                tv.setTextColor(Color.GRAY);
-                tv.setText(String.valueOf(getNumNeighboringMines(n))); // cell value
+                revealCell(n);
+                if(getNumNeighboringMines(n) == 0) {
+                    revealAdjacentCells(n);
+                }
+                if(numNonMinesRevealed == 76) { // 80 cells total - 4 mines
+                    // game has been won
+                    hidePickAndFlag(); // game over so don't let user pick/flag
+                    won = true;
+                    running = false; // stop timer
+                    revealMines(n);
+                }
             }
         } else if (flag && tv.getText() == "") {
             // only flag cell if not already picked
@@ -217,11 +214,8 @@ public class MainActivity extends AppCompatActivity {
             final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
             numFlagsLeft -= 1;
             flagsLeft.setText(String.valueOf(numFlagsLeft));
-//            if(numFlagsLeft == 0) { // no more flags left, go to pick
-//                toggleToPicking();
-//            }
         } else if(flag && tv.getText().toString().equals(getString(R.string.flag))) {
-            // unflag cell if already flagged
+            // un-flag cell if already flagged
             tv.setText("");
             final TextView flagsLeft = (TextView) findViewById(R.id.flagsLeftValue);
             numFlagsLeft += 1;
@@ -236,21 +230,73 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 if(!mineLocations.isEmpty()) {
                     if(mineLocations.contains(Integer.valueOf(n))){
-                        cell_tvs.get(n).setBackgroundColor(Color.LTGRAY);
+                        if(!won) {
+                            // leave cell background green if won game
+                            cell_tvs.get(n).setBackgroundColor(Color.LTGRAY);
+                        }
                         cell_tvs.get(n).setText(R.string.mine);
                         mineLocations.remove(Integer.valueOf(n));
                     } else {
-                        cell_tvs.get(mineLocations.get(0)).setBackgroundColor(Color.LTGRAY);
+                        if(!won) {
+                            // leave cell background green if won game
+                            cell_tvs.get(mineLocations.get(0)).setBackgroundColor(Color.LTGRAY);
+                        }
                         cell_tvs.get(mineLocations.get(0)).setText(R.string.mine);
                         mineLocations.remove(0);
                     }
                 } else {
                     handler.removeCallbacksAndMessages(null);
+                    gameOver = true;
                 }
                 handler.postDelayed(this, 1000);
             }
         });
     }
+
+    // only handles non-mine cells
+    private void revealCell(int n) {
+        int numNeighboringMines = getNumNeighboringMines(n);
+        cell_tvs.get(n).setBackgroundColor(Color.LTGRAY);
+        cell_tvs.get(n).setTextColor(Color.GRAY);
+        cell_tvs.get(n).setText(String.valueOf(numNeighboringMines));
+
+        if(numNeighboringMines == 0) {
+            cell_tvs.get(n).setTextColor(Color.LTGRAY);
+            revealAdjacentCells(n);
+        }
+        numNonMinesRevealed += 1;
+    }
+
+    private void revealAdjacentCells(int n) {
+        int i = n/COLUMN_COUNT;
+        int j = n%COLUMN_COUNT;
+
+        if(j - 1 >= 0 && cell_tvs.get(n - 1).getText() == "") { // left
+            revealCell(n - 1);
+        }
+        if(i - 1 >= 0 && j - 1 >= 0 && cell_tvs.get(n - 8 - 1).getText() == "") { // topLeft
+            revealCell(n - 8 - 1);
+        }
+        if(i - 1 >= 0 && cell_tvs.get(n - 8).getText() == "") { // top
+            revealCell(n - 8);
+        }
+        if(i - 1 >= 0 && j + 1 <= 7 && cell_tvs.get(n - 8 + 1).getText() == "") { // topRight
+            revealCell(n - 8 + 1);
+        }
+        if(j + 1 <= 7 && cell_tvs.get(n + 1).getText() == "") { // right
+            revealCell(n + 1);
+        }
+        if(i + 1 <= 9 && j + 1 <= 7 && cell_tvs.get(n + 8 + 1).getText() == "") { // bottomRight
+            revealCell(n + 8 + 1);
+        }
+        if(i + 1 <= 9 && cell_tvs.get(n + 8).getText() == "") { // bottom
+            revealCell(n + 8);
+        }
+        if(i + 1 <= 9 && j - 1 >= 0 && cell_tvs.get(n + 8 - 1).getText() == "") { // leftBottom
+            revealCell(n + 8 - 1);
+        }
+    }
+
 
     private void runTimer() {
         final TextView timeView = (TextView) findViewById(R.id.timer);
@@ -266,21 +312,15 @@ public class MainActivity extends AppCompatActivity {
                 if (running) {
                     clock++;
                 }
-                handler.postDelayed(this, 1000);
+                handler.postDelayed(this, 1500);
             }
         });
     }
 
     private void showResultsPage() {
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                Intent i = new Intent(getApplicationContext(), ResultsPage.class);
-                i.putExtra("clock", clock);
-                i.putExtra("won", won);
-                startActivity(i);
-            }
-        }, 5000);
+        Intent i = new Intent(getApplicationContext(), ResultsPage.class);
+        i.putExtra("clock", clock);
+        i.putExtra("won", won);
+        startActivity(i);
     }
 }

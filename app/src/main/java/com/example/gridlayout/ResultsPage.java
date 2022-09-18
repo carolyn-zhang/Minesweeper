@@ -36,9 +36,8 @@ public class ResultsPage extends AppCompatActivity {
                 extraMessage.setText("Good job!");
             } else {
                 wonMessage.setText("You lost.");
-                extraMessage.setText("You got it next time!");
+                extraMessage.setText("Nice try!");
             }
-
         }
 
         // Play Again button
