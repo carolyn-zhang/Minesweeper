@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean pick = true;
     private boolean won = false;
     private boolean gameOver = false;
+    private boolean bombsFinishedRevealing = false;
 
     // save the TextViews of all cells in an array, so later on,
     // when a TextView is clicked, we know which cell it is
@@ -77,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
         TextView flag = (TextView) findViewById(R.id.flag);
         flag.setOnClickListener(this::onClickFlag);
         flag.setVisibility(TextView.INVISIBLE);
-
     }
 
     private ArrayList<Integer> generateMineLocations() {
@@ -181,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
     public void onClickTV(View view){
         if(!running && !gameOver)
             running = true; // start timer
-        if(gameOver){
+        if(bombsFinishedRevealing){
             showResultsPage();
         }
 
@@ -193,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                 // the cell picked has a mine, game has been lost
                 hidePickAndFlag(); // game over so don't let user pick/flag
                 running = false; // stop timer
+                gameOver = true;
                 // reveal mine that was picked, followed by the other mines
                 revealMines(n);
             } else { // the cell picked doesn't have a mine
@@ -205,6 +206,7 @@ public class MainActivity extends AppCompatActivity {
                     hidePickAndFlag(); // game over so don't let user pick/flag
                     won = true;
                     running = false; // stop timer
+                    gameOver = true;
                     revealMines(n);
                 }
             }
@@ -246,11 +248,23 @@ public class MainActivity extends AppCompatActivity {
                     }
                 } else {
                     handler.removeCallbacksAndMessages(null);
-                    gameOver = true;
+                    xIncorrectFlags();
+                    bombsFinishedRevealing = true;
                 }
                 handler.postDelayed(this, 1000);
             }
         });
+    }
+
+    // after game has been lost, reveal any incorrectly flagged cells with an "X"
+    private void xIncorrectFlags() {
+        for(int i = 0; i < cell_tvs.size(); i++) {
+            if( cell_tvs.get(i).getText().toString().equals(getString(R.string.flag))) {
+                // user incorrectly flagged a non-mine cell
+                cell_tvs.get(i).setTextColor(Color.RED);
+                cell_tvs.get(i).setText("X");
+            }
+        }
     }
 
     // only handles non-mine cells
